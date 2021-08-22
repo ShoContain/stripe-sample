@@ -64,16 +64,21 @@ app.get('/return', async(req, res) => {
 
 })
 
+// client-secret取得
 app.get("/client-secret", async (req, res) => {
-  // Amountはここで計算
+  const amount = 1000
+  const application_fee = 1000 * 0.3
+
   const paymentIntent = await stripe.paymentIntents.create({
     payment_method_types:['card'],
-    amount: calculateOrderAmount(items),
-    currency: "usd"
-  });
-  res.send({
-    clientSecret: paymentIntent.client_secret
-  });
+    amount: amount,
+    currency: "jpy",
+    application_fee_amount
+  },{
+    stripeAccount: req.session.accountID
+  })
+
+  res.json({clientSecret: paymentIntent.client_secret})
 });
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`)
