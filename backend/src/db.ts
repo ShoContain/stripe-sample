@@ -1,4 +1,6 @@
 import crypto from 'crypto'
+import { v4 as uuidv4 } from 'uuid'
+
 interface User {
   id: number
   loginId: string
@@ -8,6 +10,11 @@ interface User {
 interface Account {
   userId: number
   stripeAccountId: string
+}
+
+interface AccessToken {
+  userId: number
+  accessToken: string
 }
 
 interface Products {
@@ -38,8 +45,8 @@ const hasDuplicatedId = (loginId: string): User | undefined => {
   return users.find((u) => u.loginId === loginId)
 }
 // 会員登録
-const register = (loginId: string, password: string): User => {
-  if (!hasDuplicatedId(loginId)) {
+export const register = (loginId: string, password: string): User => {
+  if (hasDuplicatedId(loginId)) {
     throw new Error('duplicated loginId')
   }
   const user: User = {
@@ -53,13 +60,37 @@ const register = (loginId: string, password: string): User => {
 }
 
 // ログイン
-const login = (loginId: string, password: string): User => {
+export const login = (loginId: string, password: string): User => {
   const user = hasDuplicatedId(loginId)
   if (!user) {
     throw new Error('user not found')
   }
   if (user.password !== md5str(password)) {
-    throw new Error('Password is wrong')
+    throw new Error('user not found')
+  }
+  return user
+}
+
+// AccessToken
+let accessTokens: AccessToken[] = []
+export const issueAccessToken = (user: User): AccessToken => {
+  accessTokens = accessTokens.filter((a) => a.userId !== user.id)
+  const at: AccessToken = {
+    userId: user.id,
+    accessToken: uuidv4(),
+  }
+  accessTokens.push(at)
+  return at
+}
+
+export const accessToken2User = (accessToken: string): User => {
+  const at = accessTokens.find((a) => a.accessToken === accessToken)
+  if (!at) {
+    throw new Error('can not log in')
+  }
+  const user = users.find((u) => u.id === at.userId)
+  if (!user) {
+    throw new Error('can not log in')
   }
   return user
 }

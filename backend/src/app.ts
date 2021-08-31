@@ -2,6 +2,8 @@ import express from 'express'
 import session from 'express-session'
 import bodyParser from 'body-parser'
 import Stripe from 'stripe'
+import { register, login, issueAccessToken, accessToken2User } from './db'
+import cors from 'cors'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2020-08-27',
@@ -16,6 +18,7 @@ app.use(
     saveUninitialized: true,
   })
 )
+app.use(cors())
 
 declare module 'express-session' {
   export interface SessionData {
@@ -25,6 +28,36 @@ declare module 'express-session' {
 
 app.use(express.static('public'))
 app.use(express.json())
+
+app.post('/login', (req, res) => {
+  const data = req.body
+  console.log(data)
+  try {
+    const user = login(data.loginId, data.password)
+    res.json({
+      access_token: issueAccessToken(user),
+    })
+  } catch (e) {
+    res.status(400).json({
+      error: e.message,
+    })
+  }
+})
+
+app.post('/register', (req, res) => {
+  const data = req.body
+  console.log(data)
+  try {
+    const user = register(data.loginId, data.password)
+    res.json({
+      success: true,
+    })
+  } catch (e) {
+    res.status(400).json({
+      error: e.message,
+    })
+  }
+})
 
 app.get('/', async (req, res) => {
   // アカウント作成
