@@ -2,7 +2,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import { useCallback, useState } from 'react'
 
-const Register  = () => {
+export default function Register(){
   const [loginId,setLoginId] = useState("")
   const [password,setPassword] = useState("")
   const [error,setError] = useState("")
@@ -28,31 +28,48 @@ const Register  = () => {
     // TODO ログインにリダイレクト
     router.push('/login')
     
-  },[loginId,password])
+  },[loginId, password, router])
 
 
   return (
-    <div>
+    <div className='container mx-auto'>
       <Head>
         <title>会員登録</title>
       </Head>
-      <h1>会員登録</h1>
-      <div style={{color:"red"}}>{error}</div>
-      <form onSubmit={doLogin}>
-      <label>
-        LOGIN ID:
-        <input type="text" value={loginId} onChange={(e)=>setLoginId(e.target.value)} />
-      </label>
-      <br/>
-      <label>
-        PASSWORD:
-        <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} />
-      </label>
-      <br/>
-      <input type="submit" value="Submit" />
+      <form　className='w-full max-w-sm mt-5'>
+        <div className="md:flex md:justify-center mb-6">
+          <div className="md:w-1/3">
+            <label className='block text-gray-700 text-sm font-bold mb-2' htmlFor="login-id">
+              LOGIN ID
+            </label>
+          </div>
+          <div className="md:w-2/3">
+            <input type="text" value={loginId} onChange={(e)=>setLoginId(e.target.value)} id='login-id' 
+            className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'/>
+          </div>
+        </div>
+        <div className="md:flex md:justify-center mb-6">
+          <div className="md:w-1/3">
+            <label className='block text-gray-700 text-sm font-bold mb-2' htmlFor="password">
+              PASSWORD
+            </label>
+          </div>
+          <div className="md:w-2/3">
+          <input type="password" value={password} id='login-id' onChange={(e)=>setPassword(e.target.value)}
+        className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline' />
+          </div>
+        </div>
+        <p className='text-red-400'>{error}</p>
+        <div className="md:flex md:items-center">
+          <div className="md:w-1/3"></div>
+          <div className="md:w-2/3">
+            <button className="shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded" 
+            type="button" onClick={doLogin}>
+              Sign Up
+            </button>
+          </div>
+        </div>
     </form>
   </div>
   )
 }
-
-export default Register

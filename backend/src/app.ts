@@ -31,11 +31,10 @@ app.use(express.json())
 
 app.post('/login', (req, res) => {
   const data = req.body
-  console.log(data)
   try {
     const user = login(data.loginId, data.password)
     res.json({
-      access_token: issueAccessToken(user),
+      token:issueAccessToken(user).accessToken
     })
   } catch (e) {
     res.status(400).json({
@@ -46,11 +45,24 @@ app.post('/login', (req, res) => {
 
 app.post('/register', (req, res) => {
   const data = req.body
-  console.log(data)
   try {
     const user = register(data.loginId, data.password)
     res.json({
       success: true,
+    })
+  } catch (e) {
+    res.status(400).json({
+      error: e.message,
+    })
+  }
+})
+// tokenの認証
+app.post('/user', (req, res) => {
+  const token = req.header('Authorization') || ''
+  try {
+    const user = accessToken2User(token)
+    res.json({
+      user
     })
   } catch (e) {
     res.status(400).json({
