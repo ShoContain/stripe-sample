@@ -10,6 +10,7 @@ interface User {
 interface Account {
   userId: number
   stripeAccountId: string
+  draft: Boolean
 }
 
 interface AccessToken {
@@ -93,4 +94,25 @@ export const accessToken2User = (accessToken: string): User => {
     throw new Error('can not log in')
   }
   return user
+}
+
+// Account
+const account: Account[] = []
+export const findAccount = (user: User): Account | undefined => {
+  return account.find((a) => a.userId === user.id)
+}
+
+export const saveAccount = (user: User, accountId: string): Account => {
+  const a: Account = {
+    userId: user.id,
+    stripeAccountId: accountId,
+    draft: true,
+  }
+  account.push(a)
+  return a
+}
+
+export const removeDraft = (account:Account): Account => {
+  account.draft = false
+  return account
 }

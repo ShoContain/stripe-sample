@@ -2,7 +2,15 @@ import express from 'express'
 import session from 'express-session'
 import bodyParser from 'body-parser'
 import Stripe from 'stripe'
-import { register, login, issueAccessToken, accessToken2User } from './db'
+import {
+  register,
+  login,
+  issueAccessToken,
+  accessToken2User,
+  findAccount,
+  saveAccount,
+  removeDraft,
+} from './db'
 import cors from 'cors'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -34,7 +42,7 @@ app.post('/login', (req, res) => {
   try {
     const user = login(data.loginId, data.password)
     res.json({
-      token:issueAccessToken(user).accessToken
+      token: issueAccessToken(user).accessToken,
     })
   } catch (e) {
     res.status(400).json({
@@ -58,11 +66,11 @@ app.post('/register', (req, res) => {
 })
 // tokenの認証
 app.post('/user', (req, res) => {
-  const token = req.header('Authorization') || ''
   try {
+    const token = req.header('Authorization') || ''
     const user = accessToken2User(token)
     res.json({
-      user
+      user,
     })
   } catch (e) {
     res.status(400).json({
@@ -71,53 +79,59 @@ app.post('/user', (req, res) => {
   }
 })
 
-app.get('/', async (req, res) => {
-  // アカウント作成
-  const account = await stripe.accounts.create({
-    type: 'standard',
-  })
-  const accountId = account.id
-  req.session.accountID = accountId
-
-  // アカウントリンクを作成
-  const accountLinks = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `http://localhost:${port}/reauth`,
-    return_url: `http://localhost:${port}/return`,
-    type: 'account_onboarding',
-  })
-
-  res.redirect(accountLinks.url)
+app.post('/connect_stripe', async (req, res) => {
+  try {
+    const token = req.header('Authorization') || ''
+    const user = accessToken2User(token)
+    // 既にアカウントがあれば↓は不要
+    let account = findAccount(user)
+    if (!account) {
+      // アカウント作成
+      const res = await stripe.accounts.create({
+        type: 'standard',
+      })
+      account = saveAccount(user, res.id)
+    }
+    // アカウントリンクを作成
+    const accountLinks = await stripe.accountLinks.create({
+      account: account.stripeAccountId,
+      refresh_url: `http://localhost:3000/reauth`,
+      return_url: `http://localhost:3000/return`,
+      type: 'account_onboarding',
+    })
+    res.json({
+      url: accountLinks.url,
+    })
+  } catch (e) {
+    res.status(400).json({
+      error: e.message,
+    })
+  }
 })
 
-app.get('/reauth', async (req, res) => {
-  const accountId = req.session.accountID
-  if (!accountId) {
-    res.redirect('/')
-    return
-  }
-  // アカウントリンクを作成
-  const accountLinks = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: `http://localhost:${port}/reauth`,
-    return_url: `http://localhost:${port}/return`,
-    type: 'account_onboarding',
-  })
+app.get('/done_connetcted', async (req, res) => {
+  try {
+    const token = req.header('Authorization') || ''
+    const user = accessToken2User(token)
+    const account = findAccount(user)
 
-  res.redirect(accountLinks.url)
-})
-
-app.get('/return', async (req, res) => {
-  const accountId = req.session.accountID
-  if (!accountId) {
-    res.redirect('/')
-    return
+    if (!account) {
+      throw new Error('Stripe Account not found')
+    }
+    // アカウント登録プロセスを完了しているか確認
+    const r = await stripe.accounts.retrieve(account.stripeAccountId)
+     // charges_enabledとdetails_submittedを見て登録が正常に行われたか確認
+    if (r.charges_enabled && r.details_submitted) {
+      removeDraft(account)
+    }
+    res.json({
+      success: true,
+    })
+  } catch (e) {
+    res.status(400).json({
+      error: e.message,
+    })
   }
-  // アカウント登録プロセスを完了しているか確認
-  const account = await stripe.accounts.retrieve(accountId)
-  console.log(account.charges_enabled)
-  // TODO charges_enabledとdetails_submittedを見て登録が正常に行われたか確認
-  res.send('return')
 })
 
 // client-secret取得
