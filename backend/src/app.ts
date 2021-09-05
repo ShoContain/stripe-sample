@@ -15,6 +15,8 @@ import {
   registerProduct,
   listProductByUser,
   listProducts,
+  loadData,
+  saveData,
 } from './db'
 import cors from 'cors'
 
@@ -54,7 +56,7 @@ app.use(express.json())
 
 // tokenの認証
 app.use((req, res, next) => {
-  if (['/login', '/register','/list_product'].includes(req.originalUrl)) {
+  if (['/login', '/register', '/list_product'].includes(req.originalUrl)) {
     next()
   } else {
     const token = req.header('Authorization') || ''
@@ -211,5 +213,15 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 })
 
 app.listen(port, () => {
+  loadData()
   console.log(`Example app listening at http://localhost:${port}`)
+})
+
+process.on('exit', () => {
+  // ここに終了時の処理を書く
+  saveData()
+})
+
+process.on('SIGINT', () => {
+  process.exit()
 })

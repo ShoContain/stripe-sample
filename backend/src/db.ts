@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
+import * as fs from 'fs'
 
 export interface User {
   id: number
@@ -40,7 +41,7 @@ const md5str = (str: string) => {
 }
 
 // User
-const users: User[] = []
+let users: User[] = []
 
 const hasDuplicatedId = (loginId: string): User | undefined => {
   return users.find((u) => u.loginId === loginId)
@@ -97,9 +98,9 @@ export const accessToken2User = (accessToken: string): User => {
 }
 
 // Account
-const account: Account[] = []
+let accounts: Account[] = []
 export const findAccount = (user: User): Account | undefined => {
-  return account.find((a) => a.userId === user.id)
+  return accounts.find((a) => a.userId === user.id)
 }
 
 export const saveAccount = (user: User, accountId: string): Account => {
@@ -108,7 +109,7 @@ export const saveAccount = (user: User, accountId: string): Account => {
     stripeAccountId: accountId,
     draft: true,
   }
-  account.push(a)
+  accounts.push(a)
   return a
 }
 
@@ -119,7 +120,7 @@ export const removeDraft = (account: Account): Account => {
 
 // Products
 // 商品登録
-const products: Product[] = []
+let products: Product[] = []
 
 export const registerProduct = (
   user: User,
@@ -162,4 +163,33 @@ export const listProducts = (query: string): Product[] => {
     return products
   }
   return products.filter((p) => p.name.indexOf(query) !== -1)
+}
+
+// Settlement
+
+// general
+export const saveData = () => {
+  fs.writeFileSync(
+    'data.json',
+    JSON.stringify({
+      users,
+      accessTokens,
+      accounts,
+      products,
+    })
+  )
+  console.log('----- data saved ------')
+}
+
+// general
+export const loadData = () => {
+  if (!fs.existsSync('data.json')) {
+    return
+  }
+  const data = JSON.parse(fs.readFileSync('data.json').toString())
+  users = data.users
+  accessTokens = data.accessTokens
+  accounts = data.accounts
+  products = data.products
+  console.log('----- data loaded ------')
 }
