@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { v4 as uuidv4 } from 'uuid'
 
-interface User {
+export interface User {
   id: number
   loginId: string
   password: string
@@ -18,11 +18,11 @@ interface AccessToken {
   accessToken: string
 }
 
-interface Products {
+interface Product {
   id: number
   userId: number
   name: string
-  amount: number
+  price: number
   url: string
 }
 
@@ -112,7 +112,54 @@ export const saveAccount = (user: User, accountId: string): Account => {
   return a
 }
 
-export const removeDraft = (account:Account): Account => {
+export const removeDraft = (account: Account): Account => {
   account.draft = false
   return account
+}
+
+// Products
+// 商品登録
+const products: Product[] = []
+
+export const registerProduct = (
+  user: User,
+  name: string,
+  price: number,
+  url: string
+): Product => {
+  if (!name) {
+    throw new Error('name required')
+  }
+  if (!price) {
+    throw new Error('price required')
+  }
+  if (price < 0) {
+    throw new Error('invalid price')
+  }
+  if (!url) {
+    throw new Error('url required')
+  }
+
+  const p: Product = {
+    id: products.length + 1,
+    userId: user.id,
+    name,
+    price,
+    url,
+  }
+  products.push(p)
+  return p
+}
+
+// 対象ユーザーの商品取得
+export const listProductByUser = (user: User): Product[] => {
+  return products.filter((p) => p.userId === user.id)
+}
+
+// 全検索
+export const listProducts = (query: string): Product[] => {
+  if (!query) {
+    return products
+  }
+  return products.filter((p) => p.name.indexOf(query) !== -1)
 }
