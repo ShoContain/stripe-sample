@@ -99,8 +99,8 @@ export const accessToken2User = (accessToken: string): User => {
 
 // Account
 let accounts: Account[] = []
-export const findAccount = (user: User): Account | undefined => {
-  return accounts.find((a) => a.userId === user.id)
+export const findAccount = (userId: number): Account | undefined => {
+  return accounts.find((a) => a.userId === userId)
 }
 
 export const saveAccount = (user: User, accountId: string): Account => {
@@ -163,6 +163,14 @@ export const listProducts = (query: string): Product[] => {
     return products
   }
   return products.filter((p) => p.name.indexOf(query) !== -1)
+}
+
+export const findProduct = (id: number): Product => {
+  const product = products.find((p) => p.id === id)
+  if (!product) {
+     throw new Error('product not found')
+  }
+  return product
 }
 
 // Settlement

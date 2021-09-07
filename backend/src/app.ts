@@ -17,6 +17,7 @@ import {
   listProducts,
   loadData,
   saveData,
+  findProduct,
 } from './db'
 import cors from 'cors'
 
@@ -84,7 +85,7 @@ app.post('/register', (req, res) => {
 
 app.post('/user', (req, res) => {
   const user = req.authUser
-  const account = findAccount(user)
+  const account = findAccount(user.id)
   res.json({
     user,
     account,
@@ -92,7 +93,7 @@ app.post('/user', (req, res) => {
 })
 
 app.post('/connect_stripe', async (req, res) => {
-  let account = findAccount(req.authUser)
+  let account = findAccount(req.authUser.id)
   if (!account) {
     // アカウント作成、既にアカウントがあれば不要
     const res = await stripe.accounts.create({
@@ -113,7 +114,7 @@ app.post('/connect_stripe', async (req, res) => {
 })
 
 app.get('/done_connetcted', async (req, res) => {
-  const account = findAccount(req.authUser)
+  const account = findAccount(req.authUser.id)
 
   if (!account) {
     throw new Error('Stripe Account not found')
@@ -153,9 +154,17 @@ app.post('/list_product', async (req, res) => {
 
 // -----------------------------------------------------------------
 // client-secret取得
-app.get('/client-secret', async (req, res) => {
-  const price = 1000
-  const applicationFee = price * 0.3
+app.post('/buy_products', async (req, res) => {
+  const data = req.body
+  const product = findProduct(data.product_id)
+  const userAccount = findAccount(product.userId)
+  if(!userAccount){
+    // ダッシュボードでStripeと連携されないと商品登録をさせないようにするべき
+    throw new Error('Stripe Account Not Connected')
+  }
+
+  const price = product.price
+  const applicationFee = price * 0.1
 
   const paymentIntent = await stripe.paymentIntents.create(
     {
@@ -166,7 +175,7 @@ app.get('/client-secret', async (req, res) => {
     },
     {
       // 売り手のアカウントID
-      stripeAccount: req.session.accountID,
+      stripeAccount: userAccount.stripeAccountId,
     }
   )
 
