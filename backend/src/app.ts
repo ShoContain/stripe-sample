@@ -57,7 +57,7 @@ app.use(express.json())
 
 // tokenの認証
 app.use((req, res, next) => {
-  if (['/login', '/register', '/list_product'].includes(req.originalUrl)) {
+  if (['/login', '/register', '/list_product','/buy_products','/webhook'].includes(req.originalUrl)) {
     next()
   } else {
     const token = req.header('Authorization') || ''
@@ -156,7 +156,7 @@ app.post('/list_product', async (req, res) => {
 // client-secret取得
 app.post('/buy_products', async (req, res) => {
   const data = req.body
-  const product = findProduct(data.product_id)
+  const product = findProduct(data.productId)
   const userAccount = findAccount(product.userId)
   if(!userAccount){
     // ダッシュボードでStripeと連携されないと商品登録をさせないようにするべき
@@ -172,15 +172,15 @@ app.post('/buy_products', async (req, res) => {
       amount: price,
       currency: 'jpy',
       application_fee_amount: applicationFee,
-    },
-    {
-      // 売り手のアカウントID
-      stripeAccount: userAccount.stripeAccountId,
+      transfer_data: {
+        // 売り手のアカウントID
+        destination: userAccount.stripeAccountId,
+      },
     }
   )
 
   res.json({
-    clientSecret: paymentIntent.client_secret,
+    clientSecret: paymentIntent.client_secret
   })
 })
 
