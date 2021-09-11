@@ -18,7 +18,7 @@ export default function Products() {
 
   const [products, setProducts] = useState([] as Product[])
   const [clientSecret, setClientSecret] = useState('')
-  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY || '')
+  const [stripePromise, setStripePromise] = useState({} as any)
 
   useEffect(() => {
     ;(async () => {
@@ -51,7 +51,11 @@ export default function Products() {
       }),
     })
     const data = await res.json()
-    setClientSecret(data.clientSecret)
+    const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY || '', {
+      stripeAccount: data.stripe_account,
+    })
+    setStripePromise(stripePromise)
+    setClientSecret(data.client_secret)
   }
   return (
     <div className="container mx-auto">

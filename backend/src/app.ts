@@ -1,7 +1,6 @@
 import express, { NextFunction, Request, Response } from 'express'
 import session from 'express-session'
 import 'express-async-errors'
-import bodyParser from 'body-parser'
 import Stripe from 'stripe'
 import {
   User,
@@ -26,6 +25,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 })
 const app = express()
 const port = 8000
+const webhookSecret: string = 'hofe'
 
 app.use(
   session({
@@ -57,7 +57,15 @@ app.use(express.json())
 
 // tokenの認証
 app.use((req, res, next) => {
-  if (['/login', '/register', '/list_product','/buy_products','/webhook'].includes(req.originalUrl)) {
+  if (
+    [
+      '/login',
+      '/register',
+      '/list_product',
+      '/buy_products',
+      '/webhook',
+    ].includes(req.originalUrl)
+  ) {
     next()
   } else {
     const token = req.header('Authorization') || ''
@@ -158,7 +166,7 @@ app.post('/buy_products', async (req, res) => {
   const data = req.body
   const product = findProduct(data.productId)
   const userAccount = findAccount(product.userId)
-  if(!userAccount){
+  if (!userAccount) {
     // ダッシュボードでStripeと連携されないと商品登録をさせないようにするべき
     throw new Error('Stripe Account Not Connected')
   }
@@ -172,44 +180,45 @@ app.post('/buy_products', async (req, res) => {
       amount: price,
       currency: 'jpy',
       application_fee_amount: applicationFee,
-      transfer_data: {
-        // 売り手のアカウントID
-        destination: userAccount.stripeAccountId,
-      },
+    },
+    {
+      stripeAccount: userAccount.stripeAccountId,
     }
   )
 
   res.json({
-    clientSecret: paymentIntent.client_secret
+    stripe_account: userAccount.stripeAccountId,
+    client_secret: paymentIntent.client_secret,
   })
 })
 
-// Match the raw body to content type application/json
 app.post(
   '/webhook',
-  bodyParser.raw({ type: 'application/json' }),
+  express.raw({ type: 'application/json' }),
   (request, response) => {
-    const event = request.body
+    const sig = request.headers['stripe-signature'] ? request.headers['stripe-signature']:''
 
-    // Handle the event
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object
-        console.log('PaymentIntent was successful!' + paymentIntent)
-        break
-      }
-      case 'payment_method.attached': {
-        const paymentMethod = event.data.object
-        console.log('PaymentMethod was attached to a Customer!' + paymentMethod)
-        break
-      }
-      // ... handle other event types
-      default: {
-        console.log(`Unhandled event type ${event.type}`)
-      }
+    let event: Stripe.Event
+
+    // Verify webhook signature and extract the event.
+    // See https://stripe.com/docs/webhooks/signatures for more information.
+    try {
+      event = stripe.webhooks.constructEvent(request.body, sig, webhookSecret)
+    } catch (err) {
+      return response.status(400).send(`Webhook Error: ${err.message}`)
     }
 
-    // Return a 200 response to acknowledge receipt of the event
+    if (event.type === 'payment_intent.succeeded') {
+      const stripeObject: Stripe.PaymentIntent = event.data
+        .object as Stripe.PaymentIntent
+      console.log(`💰 PaymentIntent status: ${stripeObject.status}`)
+    } else if (event.type === 'charge.succeeded') {
+      const charge = event.data.object as Stripe.Charge
+      console.log(`💵 Charge id: ${charge.id}`)
+    } else {
+      console.warn(`🤷‍♀️ Unhandled event type: ${event.type}`)
+    }
+
     response.json({ received: true })
   }
 )
